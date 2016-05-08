@@ -37,12 +37,16 @@ public class TableDataIO_Unsorted extends TableDataIO {
 	public long delete(String colname, String value) throws Exception {
 		if(!colname.equals(def.getPK()))throw new Exception("Deleting non PK is not implemented");
 		long s = System.currentTimeMillis();
+
 		int location = pkValLocation(value);
+
 		if(location==-1)throw new Exception("No record with col: " + colname + " and value " + value);
+
 		byte[] bytes = rawRecordAt((int) numOfRecords() - 1).getBytes();
 		getRandomAccessFile().seek(location*recordLength());
 		getRandomAccessFile().write(bytes);
 		getRandomAccessFile().getChannel().truncate((numOfRecords()-1)*recordLength());
+
 		long e = System.currentTimeMillis();
 		return e - s;
 	}

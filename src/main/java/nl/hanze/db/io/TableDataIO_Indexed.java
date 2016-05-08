@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 import nl.hanze.db.def.TableDefinition;
@@ -54,10 +55,31 @@ public class TableDataIO_Indexed extends TableDataIO {
 		return this.record_size_fixed_part;
 	}
 
+	public int pkValLocation(String pkval) throws Exception {
+		int col = def.getColPosition(def.getPK());
+		boolean found = false;
+		int i = 0;
+		for (i = 0; i < numOfRecords() && !found; i++)
+			found = recordAt(i)[col].equals(pkval);
+
+		return found ? i - 1 : -1;
+	}
+
 	/*** OPGAVE 4e / implementeer add() ***/
 	@Override
 	public long add(String[] record) throws Exception {
 		long s = System.currentTimeMillis();
+
+		int pkpos = pkValLocation(record[def.getColPosition(def.getPK())]);
+		if (pkpos != -1)
+			throw new Exception("Primary key already in table");
+
+		RandomAccessFile r = getRandomAccessFile();
+		r.getChannel().position(r.getChannel().size());
+		ByteBuffer contents = ByteBuffer.wrap(prepareRecord(record).getBytes());
+		r.getChannel().write(contents);
+
+		addIndexEntry(def.getColPosition(def.getPK()), record[def.getColPosition(def.getPK())]);
 
 		long e = System.currentTimeMillis();
 		return e - s;
@@ -68,14 +90,65 @@ public class TableDataIO_Indexed extends TableDataIO {
 	public long delete(String colname, String value) throws Exception {
 		long s = System.currentTimeMillis();
 
+		// get the index record size
+		Integer[] size = def.getSizes();
+		int pkindex = def.getColPosition(def.getPK());
+		int recordSize = idxFixedRecordLength() + size[pkindex];
+
+		// get the hashcode of the value
+		String s_value = value.trim();
+		int indexPosition = hash(s_value);
+
+		// go to the first position
+		indexFile.seek(indexPosition * recordSize);
+		RandomAccessFile table = getRandomAccessFile();
+
+		String[] indexRecord;
+		do {
+			// read the info from the index
+			String line = indexFile.readLine();
+			indexRecord = line.split("#");
+
+			// go to the location inside the table
+			table.seek(recordLength() * Integer.parseInt(indexRecord[3]));
+
+			// delete the line from the table and the index
+			byte[] bytes = rawRecordAt((int) numOfRecords() - 1).getBytes();
+			getRandomAccessFile().write(bytes);
+			getRandomAccessFile().getChannel().truncate((numOfRecords()-1)*recordLength());
+			deleteIndexEntry(colname, Integer.parseInt(indexRecord[1]));
+
+		} while (indexRecord[4] != null);
+
 		long e = System.currentTimeMillis();
 		return e - s;
 	}
 
 	/*** OPGAVE 4e / implementeer update() ***/
 	@Override
-	public long update(String[] record) throws IOException, Exception {
+	public long update(String[] record) throws IOException, Exception { // TODO
 		long s = System.currentTimeMillis();
+
+		// get the index record size
+		Integer[] size = def.getSizes();
+		int pkindex = def.getColPosition(def.getPK());
+		int recordSize = idxFixedRecordLength() + size[pkindex];
+
+		// get the hashcode of the value
+		String s_value = record[def.getColPosition(def.getPK())].trim();
+		int indexPosition = hash(s_value);
+
+		// go to the first position
+		indexFile.seek(indexPosition * recordSize);
+		RandomAccessFile table = getRandomAccessFile();
+
+		// read the info from the index
+		String line = indexFile.readLine();
+		String[] indexRecord = line.split("#");
+
+		// go to the record and write to it
+		table.seek(recordLength() * Integer.parseInt(indexRecord[3]));
+		table.write(prepareRecord(record).getBytes());
 
 		long e = System.currentTimeMillis();
 		return e - s;
@@ -86,6 +159,34 @@ public class TableDataIO_Indexed extends TableDataIO {
 	public long search(String colname, String value, ArrayList<String[]> result)
 			throws Exception {
 		long s = System.currentTimeMillis();
+
+		// get the index record size
+		Integer[] size = def.getSizes();
+		int pkindex = def.getColPosition(def.getPK());
+		int indexRecordSize = idxFixedRecordLength() + size[pkindex];
+
+		// get the hashcode of the value
+		String s_value = value.trim();
+		int indexPosition = hash(s_value);
+
+		// go to the first position
+		indexFile.seek(indexPosition * indexRecordSize);
+		RandomAccessFile table = getRandomAccessFile();
+
+		String[] tmp;
+		do {
+			// read the info from the index
+			String line = indexFile.readLine();
+			tmp = line.split("#");
+
+			table.seek(recordLength() * Integer.parseInt(tmp[3]));
+
+			// read the from the table and add them to the results ArrayList
+			line = table.readLine();
+			String[] parts = line.split("#");
+			result.add(parts);
+
+		} while (tmp[4] != null);
 
 		long e = System.currentTimeMillis();
 		return e - s;
