@@ -1,6 +1,7 @@
 package nl.hanze.db.test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import nl.hanze.db.def.*;
 import nl.hanze.db.io.*;
@@ -17,17 +18,17 @@ public class Tester
 	}
 	public static final databaseMode testMode = databaseMode.UNSORTED;
 	
-	private static final int numberOfRecords = 7500;
+	private static final int numberOfRecords = 10000;
 	
 	//gebruik onderstaande switches om te bepalen welke test moeten worden uitgevoerd.
 	public static final boolean TEST_ADD = true;
-	public static final boolean TEST_SEARCH_PK = false;
-	public static final boolean TEST_SEARCH_NON_PK = false;
-	public static final boolean TEST_UPDATE = false;
-	public static final boolean TEST_DELETE = false;
+	public static final boolean TEST_SEARCH_PK = true;
+	public static final boolean TEST_SEARCH_NON_PK = true;
+	public static final boolean TEST_UPDATE = true;
+	public static final boolean TEST_DELETE = true;
 
 	// gebruik deze switch om aan te geven of je bij elke iteratie info in je console wilt hebben.
-	private static final boolean DISPLAY_ITERATION_INFO = true;
+	private static final boolean DISPLAY_ITERATION_INFO = false;
 
 	private static final String UNSORTED_DIRECTORY = "./unsorted";
 	private static final String INDEXED_DIRECTORY = "./indexed";
@@ -74,6 +75,7 @@ public class Tester
 
 	private void runTests(TableDataIO td) throws Exception
 	{
+//		testRecordAt(td);
 		testAdd(td);
 		testSearchNonPK(td);
 		testSearchPK(td);
@@ -114,6 +116,25 @@ public class Tester
 
 			e = System.currentTimeMillis();
 			System.out.println("Inserten van " + numberOfRecords + " records duurde " + (e - s) + " ms");
+		}
+	}
+
+	private void testRecordAt(TableDataIO td){
+		try {
+			td.delete("PID","1500");
+			if(true)return;
+			long time = System.currentTimeMillis();
+			for (int i = 0; i < 800; i++) {
+				td.recordAt(i);
+			}
+			System.out.println(System.currentTimeMillis()-time);
+			time = System.currentTimeMillis();
+			for (int i = 0; i < 800; i++) {
+				td.recordAtOld(i);
+			}
+			System.out.println(System.currentTimeMillis()-time);
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 

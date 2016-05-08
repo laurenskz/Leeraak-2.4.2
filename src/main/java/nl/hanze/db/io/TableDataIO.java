@@ -1,9 +1,9 @@
 package nl.hanze.db.io;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
+import java.io.*;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import nl.hanze.db.def.TableDefinition;
 
@@ -59,30 +59,53 @@ public abstract class TableDataIO {
 	}
 
 	protected long numOfRecords() throws Exception {
-		long length = BaseIO.getFile(def.getTableName() + ".tbl").length();
+		long length = getRandomAccessFile().length();
 		return length / recordLength();
 	}
 
 	/*** OPGAVE 3b ***/
-	protected String[] recordAt(int i) throws Exception {
-		if (i < 0 || i >= numOfRecords())
+	public String[] recordAtOld(int i) throws Exception {
+        if (i < 0 || i >= numOfRecords())
 			throw new Exception("Record position out of bounds");
 
 		BufferedReader buf = new BufferedReader(new FileReader(
 				BaseIO.getInitDir() + File.separator + def.getTableName()
 						+ ".tbl"));
 		buf.skip(i * recordLength());
-		String sLine = buf.readLine();
-		buf.close();
-		String[] temp = sLine.split("#");
-		for (int j = 0; j < temp.length; j++) {
-			temp[j] = stripSpaces(temp[j]);
-		}
-
-		return temp;
+        return parseLine(buf.readLine());
 	}
 
-	public abstract long add(String[] record) throws Exception;
+    private String[] parseLine(String sLine) throws IOException {
+        String[] temp = sLine.split("#");
+        for (int j = 0; j < temp.length; j++) {
+            temp[j] = stripSpaces(temp[j]);
+        }
+        return temp;
+    }
+
+
+
+    public String[] recordAt(int i) throws Exception {
+        String line = rawRecordAt(i);
+        return parseLine(line);
+    }
+
+    protected String rawRecordAt(int i) throws Exception {
+        if (i < 0 || i >= numOfRecords())
+            throw new Exception("Record position out of bounds");
+        RandomAccessFile randomAccessFile = getRandomAccessFile();//Open a randomaccesfile
+        randomAccessFile.getChannel().position(i*recordLength());
+        ByteBuffer buffer = ByteBuffer.allocate((int)recordLength());
+        randomAccessFile.getChannel().read(buffer);
+        return new String(buffer.array());
+    }
+
+    protected RandomAccessFile getRandomAccessFile() throws Exception {
+        return BaseIO.getFile(def.getTableName()
+                + ".tbl");
+    }
+
+    public abstract long add(String[] record) throws Exception;
 
 	public abstract long delete(String colname, String value) throws Exception;
 
