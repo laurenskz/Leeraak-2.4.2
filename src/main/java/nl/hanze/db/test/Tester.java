@@ -16,16 +16,16 @@ public class Tester
 		UNSORTED,
 		INDEXED
 	}
-	public static final databaseMode testMode = databaseMode.UNSORTED;
+	public static final databaseMode testMode = databaseMode.INDEXED;
 	
 	private static final int numberOfRecords = 10000;
 	
 	//gebruik onderstaande switches om te bepalen welke test moeten worden uitgevoerd.
-	public static final boolean TEST_ADD = true;
+	public static final boolean TEST_ADD = false;
 	public static final boolean TEST_SEARCH_PK = true;
 	public static final boolean TEST_SEARCH_NON_PK = true;
-	public static final boolean TEST_UPDATE = true;
-	public static final boolean TEST_DELETE = true;
+	public static final boolean TEST_UPDATE = false;
+	public static final boolean TEST_DELETE = false;
 
 	// gebruik deze switch om aan te geven of je bij elke iteratie info in je console wilt hebben.
 	private static final boolean DISPLAY_ITERATION_INFO = false;
@@ -162,7 +162,7 @@ public class Tester
 			}
 
 			e = System.currentTimeMillis();
-			System.out.println("Search (on PK) ("+numberOfTests+" keer) met gemiddeld "+ Math.ceil(totalResults/numberOfTests) + " resultaten duurde " + (e - s) + " ms");
+			System.out.println("Search (on PK) ("+numberOfTests+" keer) met gemiddeld "+ Math.ceil((double)totalResults/numberOfTests) + " resultaten duurde " + (e - s) + " ms");
 		}
 	}
 	
